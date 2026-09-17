@@ -70,10 +70,8 @@ Logo, os slots válidos são de 0 a 509.
 ## Complemento de 17/09: esquema e cabeçalhos
 
 A arquitetura continua concentrada em `minidb.py`: funções de acesso binário,
-`Pagina` para os registros, `Esquema` para sua representação e `Arquivo` para
-gerenciar o banco. O JanusDB foi consultado como referência conceitual de
-páginas e deslocamentos, sem copiar sua implementação:
-https://github.com/Anders0nlima/JanusDB/tree/a2c5dce197ae4a92255f4428dda8bc5edfe9ae20
+`Pagina` organiza os registros, `Esquema` define sua representação e `Arquivo`
+coordena a criação, a leitura e a persistência das páginas do banco.
 
 O esquema padrão contém `id` e `matricula`, ambos `uint32`. O formato `<II`
 é derivado dessas colunas. São aceitos também campos `int32`, mantendo o total
