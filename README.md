@@ -1,22 +1,56 @@
+# MiniDB - Módulo 1
 
-# MiniDB — Banco de Dados II
+Este é o primeiro módulo do projeto da disciplina de Banco de Dados II. Neste
+módulo ainda não existe SQL. A ideia é entender como os dados podem ser
+guardados em posições específicas de um arquivo binário.
 
-### Discentes
+## Formato usado
 
-* Joao Antonio Fragallo - 202511140010
-* Erick Wilson
+- página: 4096 bytes;
+- cabeçalho da página: 16 bytes;
+- registro: 8 bytes;
+- campos do registro: `id` e `matricula`, com 4 bytes cada;
+- RID: `(numero da pagina, slot)`.
 
-Projeto desenvolvido para a disciplina **Banco de Dados II**.
+O arquivo é dividido em páginas. Dentro de cada página, os primeiros 16 bytes
+ficam reservados para o cabeçalho e depois começam os slots dos registros.
 
-O objetivo é construir um pequeno sistema gerenciador de banco de dados do zero, implementando gradualmente as principais estruturas internas de um SGBD.
+Para descobrir a posição de um registro no arquivo foi usada esta conta:
 
-A ideia é entender o que acontece entre uma consulta SQL e o armazenamento dos dados em disco.
+```text
+pagina * 4096 + 16 + slot * 8
+```
 
-## Objetivo final
+Por exemplo, para o RID `(2, 0)`:
 
-Ao final da disciplina, o MiniDB deverá ser capaz de executar comandos como:
+```text
+2 * 4096 + 16 + 0 * 8 = 8208
+```
 
-```sql
-CREATE TABLE aluno (id INT, matricula INT);
-INSERT INTO aluno VALUES (1, 20260001);
-SELECT * FROM aluno WHERE id = 1;
+## Arquivos principais
+
+- `minidb.py`: leitura e escrita de páginas e a classe `Pagina`;
+- `executar.py`: grava e recupera o registro pedido no exercício;
+- `tests/test_m1.py`: testes do módulo.
+
+## Como executar
+
+```bash
+python3 executar.py
+```
+
+Resultado esperado:
+
+```text
+Registro recuperado:
+id: 1
+matricula: 20260001
+RID: (2, 0)
+Byte inicial: 8208
+```
+
+Para rodar os testes:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
