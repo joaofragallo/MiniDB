@@ -11,7 +11,7 @@ implementação nessas estruturas.
 
 ## Formato usado
 
-- Tamanho de página: 4096 bytesmodifique esse projeto com base nisso e no
+- Tamanho de página: 4096 bytes
 - Cabeçalho de cada página: 16 bytes
 - Tamanho de registro: 8 bytes
 - Registro: dois inteiros de 4 bytes (`id` e `matricula`)
