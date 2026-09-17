@@ -1,4 +1,8 @@
 # MiniDB - Módulo 1
+### Discentes 
+
+  * Joao Antonio Fragallo Ferreira - 202511140010
+  * Erick Wilson
 
 Este é o primeiro módulo do projeto da disciplina de Banco de Dados II. Neste
 módulo ainda não existe SQL. A ideia é entender como os dados podem ser
