@@ -1,5 +1,6 @@
 import os
 import struct
+from collections import OrderedDict
 
 
 TAMANHO_PAGINA = 4096
@@ -99,7 +100,11 @@ class Pagina:
         if numero_pagina is not None and numero != numero_pagina:
             raise ValueError("Número da página não confere")
 
-        self.dados = bytearray(dados)
+        # O bytearray do cache deve ser usado sem criar uma cópia.
+        if isinstance(dados, bytearray):
+            self.dados = dados
+        else:
+            self.dados = bytearray(dados)
         self.quantidade_registros = quantidade
         self.numero_pagina = numero
         self.reservado = reservado
@@ -240,3 +245,90 @@ class Arquivo:
         with open(self.caminho, "r+b") as arquivo:
             arquivo.flush()
             os.fsync(arquivo.fileno())
+
+
+class Cache:
+    """Guarda páginas em memória e expulsa a menos usada que esteja solta."""
+
+    def __init__(self, pager, capacidade=16):
+        if not isinstance(capacidade, int) or capacidade <= 0:
+            raise ValueError("A capacidade precisa ser um inteiro positivo")
+        self.pager = pager
+        self.capacidade = capacidade
+        self.frames = {}
+        self.suja = set()
+        self.fixada = {}
+        self.uso = OrderedDict()
+        self.acertos = 0
+        self.faltas = 0
+
+    def fixa(self, numero):
+        self.pager._valida_pagina(numero)
+        if numero in self.frames:
+            self.acertos += 1
+            self.uso.move_to_end(numero)
+        else:
+            self.faltas += 1
+            if len(self.frames) == self.capacidade:
+                self._expulsa()
+            self.frames[numero] = bytearray(self.pager.le_pagina(numero))
+            self.fixada[numero] = 0
+            self.uso[numero] = None
+        self.fixada[numero] += 1
+        return self.frames[numero]
+
+    def solta(self, numero, sujou=False):
+        if self.fixada.get(numero, 0) == 0:
+            raise ValueError("Página não está fixada")
+        if sujou:
+            self.suja.add(numero)
+        self.fixada[numero] -= 1
+
+    def _expulsa(self):
+        for numero in list(self.uso):
+            if self.fixada[numero] != 0:
+                continue
+            if numero in self.suja:
+                self.pager.escreve_pagina(numero, self.frames[numero])
+                self.suja.remove(numero)
+            del self.frames[numero]
+            del self.fixada[numero]
+            del self.uso[numero]
+            return
+        raise RuntimeError("Todas as páginas estão fixadas")
+
+    def descarrega(self):
+        for numero in list(self.suja):
+            self.pager.escreve_pagina(numero, self.frames[numero])
+            self.suja.remove(numero)
+        self.pager.sync()
+
+    def insere(self, registro):
+        # O espaço livre é conferido no cache, pois o disco pode estar atrasado.
+        numero = 1
+        while True:
+            # Se todas as páginas estiverem cheias, cria mais uma.
+            if numero == self.pager.quantidade_paginas:
+                self.pager.aloca()
+
+            dados = self.fixa(numero)
+            sujou = False
+            try:
+                pagina = Pagina(dados, numero_pagina=numero)
+                if pagina.quantidade_registros < QUANTIDADE_SLOTS:
+                    slot = pagina.insere(registro)
+                    sujou = True
+                    return numero, slot
+            finally:
+                self.solta(numero, sujou)
+            numero += 1
+
+    def varre(self):
+        for numero in range(1, self.pager.quantidade_paginas):
+            dados = self.fixa(numero)
+            try:
+                pagina = Pagina(dados, numero_pagina=numero)
+                for slot in range(pagina.quantidade_registros):
+                    yield (numero, slot), pagina.le_registro(slot)
+            finally:
+                self.solta(numero)
