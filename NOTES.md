@@ -1,4 +1,4 @@
-# NOTES.md — M1 e M2
+# NOTES.md — M1, M2 e M3
 
 ## Linguagem
 
@@ -109,3 +109,55 @@ Requisitos conferidos com a [Aula 02 — Cache de páginas](https://gustavopinto
 `executar.py` mede as duas varreduras sem cache e depois as duas com cache.
 A entrega da disciplina também pede pull request e histórico de commits;
 esses passos são separados da implementação local.
+
+## M3 — Árvore B+
+
+Requisitos: [Aula 03 — Árvore B+](https://gustavopinto.org/assets/slides/bd2-2026/aula03.html).
+Implementamos busca, inserção com divisão de folhas e nós internos, crescimento
+da raiz e consulta por intervalo. Não há remoção. Chaves são IDs `uint32`
+únicos; tentar inserir uma chave repetida gera `ValueError`.
+
+`arvore_bmais.py` mantém o índice separado dos registros. O arquivo `.idx`
+tem páginas de 4096 bytes, lidas e alteradas pelo `Cache` existente. Um pequeno
+pager `_ArquivoIndice` cuida das páginas do índice, pois `Arquivo` valida
+cabeçalhos de registros do M1. Não alteramos `minidb.py` nem o formato do M1/M2.
+
+### Representação do nó dentro da página
+
+Todos os números usam little-endian. A página 0 contém o cabeçalho `<8sIII>`:
+assinatura `MDBIDX01` (8 bytes), quantidade de páginas (4), página raiz (4)
+e máximo de chaves por nó (4). O restante fica zerado.
+
+Cada nó tem um cabeçalho de 16 bytes (`<B3xII4x>`): indicador de folha (1 byte),
+3 bytes de preenchimento, quantidade de chaves (4), próxima folha (4, zero
+quando não existe) e 4 bytes de preenchimento.
+
+- Folha: após o cabeçalho, entradas `<III>` de 12 bytes com chave, página do
+  registro e slot. Cabem `(4096 - 16) // 12 = 340` entradas.
+- Interno: após o cabeçalho, todas as chaves `uint32`, seguidas dos números
+  das páginas dos filhos `uint32`. São N chaves e N+1 filhos. Usamos o mesmo
+  limite de 340 chaves, embora os internos comportem mais.
+
+Ao dividir uma folha, a primeira chave da metade direita é copiada para o
+pai, permanecendo na folha. Ajustamos os ponteiros entre folhas. Ao dividir
+um nó interno, a chave central vai para o pai e sai do nó dividido.
+Uma divisão da raiz cria outra raiz. A busca usa igualdade para descer à direita
+do separador. O intervalo desce uma vez e segue as próximas folhas.
+
+`_No.de_bytes()` e `_No.como_bytes()` cuidam do formato binário, como a
+classe `Pagina` do M1. A árvore concentra os algoritmos: `_insere()` insere
+e `_divide()` separa um nó cheio e devolve o separador para o pai.
+
+`_le()` libera o buffer depois de decodificar o nó, e `_grava()` fixa a página
+apenas enquanto copia sua representação binária. Assim, a recursão não mantém
+os ancestrais fixados e funciona até com cache de uma página.
+
+Chame `descarrega()` nos dados e no índice antes de encerrar. O índice grava
+os nós antes dos metadados da raiz. Não há recuperação de falhas nem transação
+atômica entre os dois arquivos. Alterações da tabela não atualizam o índice
+automaticamente; a aplicação insere o RID explicitamente.
+
+Os testes reproduzem os dois exercícios do slide, conferem divisões em vários
+níveis, folhas na mesma profundidade, separadores, busca ausente, duplicatas,
+intervalos, RIDs do M1 e reabertura. Também exercitam o limite real de 340
+chaves e a expulsão de páginas com cache de uma página.

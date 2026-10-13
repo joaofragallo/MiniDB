@@ -8,6 +8,7 @@
 Projeto da disciplina de Banco de Dados II. O M1 implementa o armazenamento de
 registros de tamanho fixo em um arquivo dividido em páginas.
 O M2 acrescenta um cache de páginas em memória.
+O M3 acrescenta um índice B+ em `arvore_bmais.py`.
 
 ## O que foi implementado
 
@@ -49,6 +50,47 @@ Cada registro possui dois inteiros de 4 bytes: `id` e `matricula`. O RID é o pa
 ```
 
 ## Execução
+
+### M3 — Índice B+
+
+O índice guarda chaves `uint32` únicas e seus RIDs em um arquivo separado.
+Suporta busca, inserção com divisão e intervalos inclusivos, sem remoção.
+Cada nó ocupa uma página de 4096 bytes e usa o mesmo `Cache` do M2.
+
+```python
+from minidb import Arquivo, Cache, Pagina
+from arvore_bmais import ArvoreBMais
+
+dados = Cache(Arquivo("alunos.db"))
+indice = ArvoreBMais("alunos.idx")
+
+# Use uma chave que ainda não exista no índice.
+rid = dados.insere((42, 20260042))
+indice.insere(42, rid)
+
+rid = indice.busca(42)  # None se não existir
+if rid is not None:
+    numero, slot = rid
+    buffer = dados.fixa(numero)
+    try:
+        print(Pagina(buffer).le_registro(slot))
+    finally:
+        dados.solta(numero)
+
+print(list(indice.intervalo(20, 65)))  # pares (chave, RID), em ordem
+dados.descarrega()
+indice.descarrega()
+```
+
+O índice é mantido explicitamente: `dados.insere()` não atualiza o índice.
+Para registros existentes, use `dados.varre()` e insira cada `registro[0]`
+com seu RID em um índice novo. IDs repetidos são rejeitados.
+Use um único objeto de índice por arquivo e descarregue antes de reabrir.
+Não há transações entre os arquivos de dados e de índice.
+Para reproduzir as divisões do slide, crie um índice novo com
+`ArvoreBMais("exercicio.idx", maximo_chaves=3)`; o padrão é 340.
+
+### Exemplo do M1 e M2
 
 ```bash
 python executar.py
