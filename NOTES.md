@@ -105,14 +105,14 @@ a segunda exige 0, totalizando 2 faltas e 2 acertos. `leituras` conta chamadas
 de leitura de páginas de dados na camada de arquivo; não mede acessos físicos
 ao dispositivo, pois o sistema operacional também pode manter um cache.
 
-Requisitos conferidos com a [Aula 02 — Cache de páginas](https://gustavopinto.org/assets/slides/bd2-2026/aula02.html).
+
 `executar.py` mede as duas varreduras sem cache e depois as duas com cache.
 A entrega da disciplina também pede pull request e histórico de commits;
 esses passos são separados da implementação local.
 
 ## M3 — Árvore B+
 
-Requisitos: [Aula 03 — Árvore B+](https://gustavopinto.org/assets/slides/bd2-2026/aula03.html).
+Requisitos:
 Implementamos busca, inserção com divisão de folhas e nós internos, crescimento
 da raiz e consulta por intervalo. Não há remoção. Chaves são IDs `uint32`
 únicos; tentar inserir uma chave repetida gera `ValueError`.
